@@ -16,12 +16,6 @@
 #define XPT2046_H_
 #include "main.h"
 
-/* Параметры SPI */
-//Включить контроль скорости работы SPI
-//Если включено, то скорость SPI будет автоматически переключаться на безопасную
-#define XPT2046_SPI_PARAM_CONTROL
-//Делитель частоты работы SPI
-#define XPT2046_SPI_PRESCALER SPI_BAUDRATEPRESCALER_64 
 
 /* Порты работы тачскрина */
 //Порт прерывания должен быть подтянут к питанию!
@@ -30,26 +24,44 @@
 #define XPT2046_CS_Pin        T_CS_Pin
 #define XPT2046_CS_GPIO_Port  T_CS_GPIO_Port
 
-/* Параметры ориентации */
-//TODO: Сделать установку параметров при инициализации
-#define XPT2046_SCALE_X 320
-#define XPT2046_SCALE_Y 240
+/* Параметры SPI */
+//Включить контроль скорости работы SPI
+//Если включено, то скорость SPI будет автоматически переключаться на безопасную
+#define XPT2046_SPI_PARAM_CONTROL
+//Делитель частоты работы SPI
+#define XPT2046_SPI_PRESCALER SPI_BAUDRATEPRESCALER_64 
 
-/* Калибровочные значения дисплея */
-#define XPT2046_MIN_RAW_X 1500
-#define XPT2046_MAX_RAW_X 30000
-#define XPT2046_MIN_RAW_Y 1800
-#define XPT2046_MAX_RAW_Y 29000
+/* Прочие настройки */
+//Нормальное количество выборок с тачскрина для усреднения
+#define XPT2046_SAMPLES 16
+//Минимальное количество выборок с тачскрина для усреднения
+//При меньшем значении функция вернёт статус T_noTouch
+#define XPT2046_MIN_SAMPLES 8
+/* Объект нажатия на тачскрин */
+//Состояния нажатий тачскрина
+//TODO: детектировать длинные и короткие нажатия
+typedef enum {
+	T_noTouch,	//Нет нажатия
+	T_pressed,	//Нажат (передний фронт /)
+	T_holdDown,	//Удерживается (-)
+	T_released, //Отпущено (задний фронт \)
+} touchStates;
+//Объект, содержащий координаты и состояние
+typedef struct {
+	uint16_t x;
+	uint16_t y;
+	touchStates state;
+} touch_t;
 
 /* Прототипы функций */
 //Функция инициализации тачскрина
 //В аргументе указывается интерфейс SPI
 void XPT2046_init(SPI_HandleTypeDef *spi);
 //Проверка нажатия на экран. Возвращает истину если есть прикосновение
+//TODO: возврат состояния тачскрина
 uint8_t XPT2046_TouchPressed(void); 
 //Получить координаты нажатия
 //TODO: Сделать нормальный обработчик нажатия на экран с прерываниями и без
-//TODO: Возвращать объект с координатами
-uint8_t XPT2046_TouchGetCoordinates(uint16_t* x, uint16_t* y);
+touch_t XPT2046_getTouch(void);
 
 #endif /* XPT2046_H_ */
