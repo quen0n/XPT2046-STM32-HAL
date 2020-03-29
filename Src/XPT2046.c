@@ -101,7 +101,15 @@ uint8_t XPT2046_TouchGetCoordinates(uint16_t* x, uint16_t* y)
     }
 
     XPT2046_TouchUnselect();
-
+	//Восстановление старых параметров
+	#ifdef XPT2046_SPI_PARAM_CONTROL
+	*_spi = old_spi; 
+	//Инициализация с старыми параметрами
+  if (HAL_SPI_Init(_spi) != HAL_OK)
+  {
+    Error_Handler();
+  }
+	#endif
     if(nsamples < 16)
         return 0;
 
@@ -120,14 +128,5 @@ uint8_t XPT2046_TouchGetCoordinates(uint16_t* x, uint16_t* y)
 
     *x = (raw_x - XPT2046_MIN_RAW_X) * XPT2046_SCALE_X / (XPT2046_MAX_RAW_X - XPT2046_MIN_RAW_X);
     *y = (raw_y - XPT2046_MIN_RAW_Y) * XPT2046_SCALE_Y / (XPT2046_MAX_RAW_Y - XPT2046_MIN_RAW_Y);
-	//Восстановление старых параметров
-	#ifdef XPT2046_SPI_PARAM_CONTROL
-	*_spi = old_spi; 
-	//Инициализация с старыми параметрами
-  if (HAL_SPI_Init(_spi) != HAL_OK)
-  {
-    Error_Handler();
-  }
-	#endif
 	return 1;
 }
