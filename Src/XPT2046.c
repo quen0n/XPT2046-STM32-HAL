@@ -108,7 +108,7 @@ touch_t XPT2046_getTouch(void) {
 	uint8_t nsamples = 0; //Количество сделанных выборок
 	//Цикл выборки
 	for(uint8_t i = 0; i < XPT2046_SAMPLES; i++)	{
-		if(XPT2046_getTouchState() == T_released || XPT2046_getTouchState() == T_noTouch) break; //Если тачскрин был отпущен, то выборка не происходит
+		if(!HAL_GPIO_ReadPin(XPT2046_IRQ_GPIO_Port, XPT2046_IRQ_Pin)) break; //Если тачскрин был отпущен, то выборка не происходит
 		//Получение значений по Y
 		HAL_SPI_Transmit(_spi, (uint8_t*)cmd_read_y, sizeof(cmd_read_y), HAL_MAX_DELAY);
 		uint8_t y_raw[2];
@@ -146,11 +146,11 @@ touch_t XPT2046_getTouch(void) {
 	//Вычисление реальных значений X и Y
 	touch.x = (raw_x - XPT2046_MIN_RAW_X) * XPT2046_SCALE_X / (XPT2046_MAX_RAW_X - XPT2046_MIN_RAW_X);
 	touch.y = (raw_y - XPT2046_MIN_RAW_Y) * XPT2046_SCALE_Y / (XPT2046_MAX_RAW_Y - XPT2046_MIN_RAW_Y);
-	touch.state = T_pressed;
+	touch.state = XPT2046_getTouchState();
 	//Возврат значений
 	return touch;
 }
-
+//TODO: Антидребезг
 //Функция обработки прерываний тачскрина
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
 	//Выход из обработчика, если это не нажатие на тачскрин
