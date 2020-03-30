@@ -58,8 +58,7 @@ typedef struct {
 //В аргументе указывается интерфейс SPI
 void XPT2046_init(SPI_HandleTypeDef *spi);
 //Проверка нажатия на экран. Возвращает истину если есть прикосновение
-//TODO: возврат состояния тачскрина
-uint8_t XPT2046_TouchPressed(void); 
+touchStates XPT2046_getTouchState(void); 
 //Получить координаты нажатия
 //TODO: Сделать нормальный обработчик нажатия на экран с прерываниями и без
 touch_t XPT2046_getTouch(void);
