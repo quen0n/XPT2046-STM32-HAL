@@ -65,9 +65,9 @@ static void XPT2046_TouchUnselect(void)
 }
 
 touchStates XPT2046_getTouchState(void) {
-	//Если состояние "нажат", то смена состояние на "удержание" и возврат "нажат"
+	//Если состояние "нажат", то смена состояние на "короткое удерживание" и возврат "нажат"
 	if(touchState == T_pressed) {
-		touchState = T_holdDown;
+		touchState = T_shortHoldDown;
 		return T_pressed;
 	}
 	//Если состояние "отпущен", то смена состояния на "нет касания" и возврат "отпущен"
@@ -133,7 +133,7 @@ touch_t XPT2046_getTouch(void) {
 	//Инициализация с старыми параметрами
   if (HAL_SPI_Init(_spi) != HAL_OK) Error_Handler();
 	#endif
-	/* Вычисление значений координат */
+	/* Установка состояния нажатия */
 	//Если количество реальных выборок меньше установленного значения, то возврат предыдущих координат
 	if(nsamples < XPT2046_MIN_SAMPLES) {
 		//Если состояние "нет касания", то фильтрация случайного касания
@@ -142,12 +142,24 @@ touch_t XPT2046_getTouch(void) {
 			return touch;
 		}
 		//Иначе установка состояния "отпущен"
+		//TODO: исправить залипание released
 		touchState = T_released;
 		touch.state = T_released;
 		return touch;
 	}
+	
+	static uint32_t startPressTime = 0;
+	
 	//Установка состояния "нажат" если было состояние "нет нажатия"
-	if(touchState == T_noTouch) touchState = T_pressed;
+	if(touchState == T_noTouch) {
+		touchState = T_pressed;
+		startPressTime = HAL_GetTick(); //Фиксация времени нажатия на экран
+	}
+	//Установка состояния "длинное удерживание" если со времени нажатия прошло XPT2046_LONGPRESS_TIME мс
+	if(touchState == T_shortHoldDown) {
+		if(HAL_GetTick()-startPressTime > XPT2046_LONGPRESS_TIME) touchState = T_longHoldDown;
+	}
+	/* Вычисление значений координат */
 	//Усреднение значений 
 	uint32_t raw_x = (avg_x / nsamples);
 	uint32_t raw_y = (avg_y / nsamples);
