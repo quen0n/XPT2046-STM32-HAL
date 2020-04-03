@@ -142,9 +142,8 @@ touch_t XPT2046_getTouch(void) {
 			return touch;
 		}
 		//Иначе установка состояния "отпущен"
-		//TODO: исправить залипание released
 		touchState = T_released;
-		touch.state = T_released;
+		touch.state = XPT2046_getTouchState();
 		return touch;
 	}
 	
