@@ -40,6 +40,14 @@
 //Время длинного удерживания в мс
 #define XPT2046_LONGPRESS_TIME 2500
 
+/* Ориентации дисплея */
+typedef enum {
+	XPT2046_LANDSCAPE,
+	XPT2046_PORTRAIT,
+	XPT2046_LANDSCAPE_180,
+	XPT2046_PORTRAIT_180,
+} touchOrienation;
+
 /* Объект нажатия на тачскрин */
 //Состояния нажатий тачскрина
 typedef enum {
@@ -58,8 +66,7 @@ typedef struct {
 
 /* Прототипы функций */
 //Функция инициализации тачскрина
-//В аргументе указывается интерфейс SPI
-void XPT2046_init(SPI_HandleTypeDef *spi);
+void XPT2046_init(SPI_HandleTypeDef *spi, touchOrienation orientation, const uint16_t width, const uint16_t height);
 //Проверка нажатия на экран. Возвращает состояние нажатия
 touchStates XPT2046_getTouchState(void); 
 //Получить координаты нажатия

@@ -18,10 +18,8 @@
 #define READ_Y 0xD0
 
 /* Параметры ориентации */
-//TODO: Сделать установку параметров при инициализации
-//TODO: Ориентация дисплея
-#define XPT2046_SCALE_X 320
-#define XPT2046_SCALE_Y 240
+static touchOrienation _orient;
+static uint16_t _width, _height;
 
 /* Калибровочные значения дисплея */
 #define XPT2046_MIN_RAW_X 1500
@@ -79,9 +77,11 @@ touchStates XPT2046_getTouchState(void) {
 	return touchState;
 }
 //Функция инициализации тачскрина
-//В аргументе указывается интерфейс SPI
-void XPT2046_init(SPI_HandleTypeDef *spi) {
+void XPT2046_init(SPI_HandleTypeDef *spi, touchOrienation orientation, const uint16_t width, const uint16_t height) {
 	_spi = spi;
+	_orient = orientation;
+	_width = width;
+	_height = height;
 }
 
 //Функция получения координат нажатия на экран
@@ -169,8 +169,22 @@ touch_t XPT2046_getTouch(void) {
 	if(raw_y < XPT2046_MIN_RAW_Y) raw_y = XPT2046_MIN_RAW_Y;
 	if(raw_y > XPT2046_MAX_RAW_Y) raw_y = XPT2046_MAX_RAW_Y;
 	//Вычисление реальных значений X и Y
-	touch.x = (raw_x - XPT2046_MIN_RAW_X) * XPT2046_SCALE_X / (XPT2046_MAX_RAW_X - XPT2046_MIN_RAW_X);
-	touch.y = (raw_y - XPT2046_MIN_RAW_Y) * XPT2046_SCALE_Y / (XPT2046_MAX_RAW_Y - XPT2046_MIN_RAW_Y);
+	if(_orient == XPT2046_LANDSCAPE) {
+		touch.y = _height-(raw_y - XPT2046_MIN_RAW_Y) * _height / (XPT2046_MAX_RAW_Y - XPT2046_MIN_RAW_Y);
+		touch.x = (raw_x - XPT2046_MIN_RAW_X) * _width / (XPT2046_MAX_RAW_X - XPT2046_MIN_RAW_X);
+	}
+	if(_orient == XPT2046_LANDSCAPE_180) {
+		touch.y = (raw_y - XPT2046_MIN_RAW_Y) * _height / (XPT2046_MAX_RAW_Y - XPT2046_MIN_RAW_Y);
+		touch.x = _width-(raw_x - XPT2046_MIN_RAW_X) * _width / (XPT2046_MAX_RAW_X - XPT2046_MIN_RAW_X);
+	}
+	if(_orient == XPT2046_PORTRAIT) {
+		touch.x = (raw_y - XPT2046_MIN_RAW_Y) * _height / (XPT2046_MAX_RAW_Y - XPT2046_MIN_RAW_Y);
+		touch.y = (raw_x - XPT2046_MIN_RAW_X) * _width / (XPT2046_MAX_RAW_X - XPT2046_MIN_RAW_X);
+	}
+	if(_orient == XPT2046_PORTRAIT_180) {
+		touch.x = _height - (raw_y - XPT2046_MIN_RAW_Y) * _height / (XPT2046_MAX_RAW_Y - XPT2046_MIN_RAW_Y);
+		touch.y = _width - (raw_x - XPT2046_MIN_RAW_X) * _width / (XPT2046_MAX_RAW_X - XPT2046_MIN_RAW_X);
+	}
 	touch.state = XPT2046_getTouchState();
 	//Возврат значений
 	return touch;
