@@ -19,6 +19,7 @@
 
 /* Параметры ориентации */
 //TODO: Сделать установку параметров при инициализации
+//TODO: Ориентация дисплея
 #define XPT2046_SCALE_X 320
 #define XPT2046_SCALE_Y 240
 
@@ -69,7 +70,7 @@ touchStates XPT2046_getTouchState(void) {
 		touchState = T_holdDown;
 		return T_pressed;
 	}
-	//Если состояние "отпущен", то смена состояние на "нет касания" и возврат "отпущен"
+	//Если состояние "отпущен", то смена состояния на "нет касания" и возврат "отпущен"
 	if(touchState == T_released) {
 		touchState = T_noTouch;
 		return T_released;
@@ -91,7 +92,7 @@ touch_t XPT2046_getTouch(void) {
 	static const uint8_t cmd_read_y[] = {READ_Y};
 	static const uint8_t zeroes_tx[] = {0x00, 0x00};
 	//Переменная, возвращаемая из функции
-	touch_t touch = {0,0,T_noTouch};
+	static touch_t touch = {0,0,T_noTouch}; //Переменная сохраняет предыдущие координаты
 	
 	/* Начало работы по SPI */
 	//Если включен контроль скорости SPI, то сохранение параметров и установка правильных значений
@@ -106,9 +107,10 @@ touch_t XPT2046_getTouch(void) {
 	uint32_t avg_x = 0; //Среднее значение X
 	uint32_t avg_y = 0;	//Среднее значение Y
 	uint8_t nsamples = 0; //Количество сделанных выборок
+	
 	//Цикл выборки
 	for(uint8_t i = 0; i < XPT2046_SAMPLES; i++)	{
-		if(!HAL_GPIO_ReadPin(XPT2046_IRQ_GPIO_Port, XPT2046_IRQ_Pin)) break; //Если тачскрин был отпущен, то выборка не происходит
+		if(HAL_GPIO_ReadPin(XPT2046_IRQ_GPIO_Port, XPT2046_IRQ_Pin) == GPIO_PIN_SET) break; //Если тачскрин был отпущен, то выборка не происходит
 		//Получение значений по Y
 		HAL_SPI_Transmit(_spi, (uint8_t*)cmd_read_y, sizeof(cmd_read_y), HAL_MAX_DELAY);
 		uint8_t y_raw[2];
@@ -131,14 +133,26 @@ touch_t XPT2046_getTouch(void) {
 	//Инициализация с старыми параметрами
   if (HAL_SPI_Init(_spi) != HAL_OK) Error_Handler();
 	#endif
-	
 	/* Вычисление значений координат */
-	//Если количество реальных выборок меньше установленного значения, то возврат пустых координат
-	if(nsamples < XPT2046_MIN_SAMPLES) return touch;
+	//Если количество реальных выборок меньше установленного значения, то возврат предыдущих координат
+	if(nsamples < XPT2046_MIN_SAMPLES) {
+		//Если состояние "нет касания", то фильтрация случайного касания
+		if (touchState == T_noTouch) {
+			touch.state = T_noTouch;
+			return touch;
+		}
+		//Иначе установка состояния "отпущен"
+		touchState = T_released;
+		touch.state = T_released;
+		return touch;
+	}
+	//Установка состояния "нажат" если было состояние "нет нажатия"
+	if(touchState == T_noTouch) touchState = T_pressed;
 	//Усреднение значений 
 	uint32_t raw_x = (avg_x / nsamples);
 	uint32_t raw_y = (avg_y / nsamples);
 	//Ограничение значений координат
+	//TODO: Устанавливать состояние "отпущен" если значения за возможными пределами
 	if(raw_x < XPT2046_MIN_RAW_X) raw_x = XPT2046_MIN_RAW_X;
 	if(raw_x > XPT2046_MAX_RAW_X) raw_x = XPT2046_MAX_RAW_X;
 	if(raw_y < XPT2046_MIN_RAW_Y) raw_y = XPT2046_MIN_RAW_Y;
@@ -149,18 +163,4 @@ touch_t XPT2046_getTouch(void) {
 	touch.state = XPT2046_getTouchState();
 	//Возврат значений
 	return touch;
-}
-//TODO: Антидребезг
-//Функция обработки прерываний тачскрина
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-	//Выход из обработчика, если это не нажатие на тачскрин
-	if(GPIO_Pin != XPT2046_IRQ_Pin) return;
-	//Проверка состояния пина и установка статуса тачскрина
-	if(HAL_GPIO_ReadPin(XPT2046_IRQ_GPIO_Port, XPT2046_IRQ_Pin)) {
-		//Если порт находится в высоком уровне, значит экран был отпущен
-		touchState = T_released;
-	} else {
-		//Если в низком, значит произошло касание
-		touchState = T_pressed;
-	}
 }
